@@ -474,7 +474,15 @@
 
         // Megjelöli a gombokat
         btns.forEach(b => {
-          if (b.dataset.valasz === data.helyes_valasz) {
+        const map = {
+          igaz: 'a',
+          hamis: 'b',
+        };
+
+          const raw = String(data.helyes_valasz).toLowerCase();
+          const helyesValasz = map[raw] || raw;
+
+          if (String(b.dataset.valasz).toLowerCase() === helyesValasz) {
             b.classList.add('helyes');
           } else if (b.dataset.valasz === valasztott && !data.helyes) {
             b.classList.add('hibas');

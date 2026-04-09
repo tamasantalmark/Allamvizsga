@@ -473,30 +473,32 @@
         const feedback = document.getElementById('feedback');
 
         // Megjelöli a gombokat
-        btns.forEach(b => {
-        const map = {
-          igaz: 'a',
-          hamis: 'b',
-        };
+       const map = {
+        igaz: 'a',
+        hamis: 'b',
+      };
 
-          const raw = String(data.helyes_valasz).toLowerCase();
-          const helyesValasz = map[raw] || raw;
+      const raw = String(data.helyes_valasz).trim().toLowerCase();
+      const helyesValasz = map[raw] || raw;
 
-          if (String(b.dataset.valasz).toLowerCase() === helyesValasz) {
-            b.classList.add('helyes');
-          } else if (b.dataset.valasz === valasztott && !data.helyes) {
-            b.classList.add('hibas');
-          }
-        });
+      const valaszHelyes = valasztott === helyesValasz;
 
-        if (data.helyes) {
-          pontszam++;
-          feedback.textContent = '✓ Helyes válasz!';
-          feedback.className = 'feedback show jo';
-        } else {
-          feedback.textContent = `✗ Sajnos nem. A helyes válasz: ${data.helyes_valasz.toUpperCase()}`;
-          feedback.className = 'feedback show rossz';
+      btns.forEach(b => {
+        if (b.dataset.valasz === helyesValasz) {
+          b.classList.add('helyes');
+        } else if (b.dataset.valasz === valasztott && !valaszHelyes) {
+          b.classList.add('hibas');
         }
+      });
+
+      if (valaszHelyes) {
+        pontszam++;
+        feedback.textContent = '✓ Helyes válasz!';
+        feedback.className = 'feedback show jo';
+      } else {
+        feedback.textContent = `✗ Sajnos nem. A helyes válasz: ${data.helyes_valasz.toUpperCase()}`;
+        feedback.className = 'feedback show rossz';
+      }
 
         document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
         document.getElementById('kihagyom-btn').style.display = 'none';

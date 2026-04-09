@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kerdesek-kviz
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://kerdesek_user:SRRJfkOnBW2O2Sq5qRdU91Ds700sMc7V@dpg-d7bq0phr0fns739daat0-a.oregon-postgres.render.com/kerdesek
+      - key: NODE_ENV
+        value: production

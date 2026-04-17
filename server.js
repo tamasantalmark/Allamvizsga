@@ -18,6 +18,23 @@ const pool = new Pool({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+// API: random kerdesek
+app.get('/api/random-kerdesek', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e
+      FROM kerdesek
+      ORDER BY RANDOM()
+    `);
+
+    res.json({ kerdesek: result.rows });
+  } catch (err) {
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+
 // API: csak a még meg nem válaszolt kérdések lekérése
 app.get('/api/meg-nem-valaszolt-kerdesek', async (req, res) => {
   try {

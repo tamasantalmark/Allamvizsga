@@ -73,7 +73,7 @@
       document.getElementById('eredmeny-screen').style.display = 'none';
 
       try {
-        const resp = await fetch('/api/kerdesek');
+        const resp = await fetch('/api/random-kerdesek');
         if (!resp.ok) throw new Error('Szerver hiba: ' + resp.status);
         const data = await resp.json();
         if (data.hiba) throw new Error(data.hiba);

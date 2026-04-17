@@ -70,7 +70,13 @@ app.post('/api/ellenor-megvalaszolas', async (req, res) => {
       return res.status(404).json({ hiba: 'Kérdés nem található.' });
     }
 
-    const helyes = String(result.rows[0].helyes_valasz).trim().toLowerCase();
+    const map = {
+      igaz: 'a',
+      hamis: 'b'
+    };
+
+    const helyesRaw = String(result.rows[0].helyes_valasz).trim().toLowerCase();
+    const helyes = map[helyesRaw] || helyesRaw;
     const adott = String(valasz).trim().toLowerCase();
 
     const jo = helyes === adott;

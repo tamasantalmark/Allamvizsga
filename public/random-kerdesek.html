@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kvíz</title>
+  <link rel="stylesheet" href="../css.css">
+</head>
+<body>
+
+  <header>
+    <h1>Semmelweis Egyetem - ETK - Gyógytornász államvizsga tesztbank kérdések</h1>
+    <p>Egyszerű feleletválasztás és Igaz/Hamis kérdések</p>
+  </header>
+
+  <!-- Töltés -->
+  <div id="loading">
+    <div class="spinner"></div>
+    Kérdések betöltése…
+  </div>
+
+  <!-- Hiba -->
+  <div id="hiba">
+    ⚠️ <span id="hiba-szoveg"></span>
+    <br><br>
+    <button class="btn btn-primary" onclick="betolt()">Újra próbálom</button>
+  </div>
+
+  <!-- Kvíz -->
+  <div id="kviz-screen">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+    <div class="progress-label">
+      <span id="progress-szoveg">1 / ?</span>
+      <span id="pontszam-label">0 helyes</span>
+    </div>
+
+    <div class="card">
+      <div class="question-number" id="kerdes-szam">Kérdés 1</div>
+      <div class="question-text" id="kerdes-szoveg"></div>
+      <div class="valaszok" id="valaszok"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</button>
+        <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eredmény -->
+  <div id="eredmeny-screen">
+    <div class="eredmeny-card">
+      <div class="eredmeny-szazalek" id="er-szazalek">–</div>
+      <div class="eredmeny-szoveg" id="er-szoveg"></div>
+      <div class="eredmeny-lista" id="er-lista"></div>
+      <button class="btn btn-primary" onclick="ujrakezdés()">🔄 Újra kezdem</button>
+    </div>
+  </div>
+
+  <script>
+    let kerdesek = [];
+    let aktualis = 0;
+    let pontszam = 0;
+    let valasztott = null;
+    let valaszolva = false;
+    let eredmenyek = [];
+
+    async function betolt() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('hiba').style.display = 'none';
+      document.getElementById('kviz-screen').style.display = 'none';
+      document.getElementById('eredmeny-screen').style.display = 'none';
+
+      try {
+        const resp = await fetch('/api/kerdesek');
+        if (!resp.ok) throw new Error('Szerver hiba: ' + resp.status);
+        const data = await resp.json();
+        if (data.hiba) throw new Error(data.hiba);
+        if (!data.kerdesek || data.kerdesek.length === 0) throw new Error('Nincsenek kérdések az adatbázisban.');
+
+        kerdesek = data.kerdesek;
+        aktualis = 0;
+        pontszam = 0;
+        eredmenyek = [];
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('kviz-screen').style.display = 'block';
+        mutatKerdes();
+      } catch (e) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('hiba').style.display = 'block';
+        document.getElementById('hiba-szoveg').textContent = e.message;
+      }
+    }
+
+    function mutatKerdes() {
+      valaszolva = false;
+      valasztott = null;
+      const k = kerdesek[aktualis];
+      const total = kerdesek.length;
+
+      document.getElementById('kerdes-szam').textContent = `Kérdés ${aktualis + 1}`;
+      document.getElementById('kerdes-szoveg').textContent = k.kerdes;
+      document.getElementById('progress-szoveg').textContent = `${aktualis + 1} / ${total}`;
+      document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+      document.getElementById('progress-fill').style.width = `${(aktualis / total) * 100}%`;
+
+      const feedback = document.getElementById('feedback');
+      feedback.className = 'feedback';
+      feedback.textContent = '';
+
+      document.getElementById('kihagyom-btn').style.display = 'inline-block';
+      document.getElementById('tovabb-btn').style.display = 'none';
+
+      // Válaszok renderelése
+      const betuk = ['a', 'b', 'c', 'd', 'e'];
+      const cont = document.getElementById('valaszok');
+      cont.innerHTML = '';
+
+      betuk.forEach(b => {
+        const szoveg = k[`valasz_${b}`];
+        if (!szoveg) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'valasz-btn';
+        btn.dataset.valasz = b;
+        btn.innerHTML = `<span class="betujel">${b}</span><span>${szoveg}</span>`;
+        btn.onclick = () => kivalaszt(b, btn);
+        cont.appendChild(btn);
+      });
+    }
+
+    function kivalaszt(valasz, btn) {
+      if (valaszolva) return;
+      // Kijelölés vizuálisan (még nem ellenőriz)
+      document.querySelectorAll('.valasz-btn').forEach(b => b.classList.remove('kivalasztott'));
+      btn.style.borderColor = 'var(--primary)';
+      btn.style.background = '#eef1ff';
+      valasztott = valasz;
+
+      // Automatikusan ellenőrzi
+      ellenor();
+    }
+
+    async function ellenor() {
+      if (valaszolva || !valasztott) return;
+      valaszolva = true;
+
+      const k = kerdesek[aktualis];
+      const btns = document.querySelectorAll('.valasz-btn');
+      btns.forEach(b => { b.disabled = true; b.style.borderColor = ''; b.style.background = ''; });
+
+      try {
+        const resp = await fetch('/api/ellenor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: k.id, valasz: valasztott })
+        });
+        const data = await resp.json();
+
+        const feedback = document.getElementById('feedback');
+
+        // Megjelöli a gombokat
+       const map = {
+        igaz: 'a',
+        hamis: 'b',
+      };
+
+      const raw = String(data.helyes_valasz).trim().toLowerCase();
+      const helyesValasz = map[raw] || raw;
+
+      const valaszHelyes = valasztott === helyesValasz;
+
+      btns.forEach(b => {
+        if (b.dataset.valasz === helyesValasz) {
+          b.classList.add('helyes');
+        } else if (b.dataset.valasz === valasztott && !valaszHelyes) {
+          b.classList.add('hibas');
+        }
+      });
+
+      if (valaszHelyes) {
+        pontszam++;
+        feedback.textContent = '✓ Helyes válasz!';
+        feedback.className = 'feedback show jo';
+      } else {
+        feedback.textContent = `✗ Sajnos nem. A helyes válasz: ${data.helyes_valasz.toUpperCase()}`;
+        feedback.className = 'feedback show rossz';
+      }
+
+        document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+        document.getElementById('kihagyom-btn').style.display = 'none';
+        document.getElementById('tovabb-btn').style.display = 'inline-block';
+
+        eredmenyek.push({
+          kerdes: k.kerdes,
+          helyes: data.helyes,
+          helyes_valasz: data.helyes_valasz,
+          adott_valasz: valasztott
+        });
+      } catch (e) {
+        document.getElementById('feedback').textContent = 'Hálózati hiba. Próbáld újra.';
+        document.getElementById('feedback').className = 'feedback show rossz';
+        valaszolva = false;
+      }
+    }
+
+    function kovetkezo() {
+      if (!valaszolva) {
+        // Kihagyás
+        const k = kerdesek[aktualis];
+        eredmenyek.push({ kerdes: k.kerdes, helyes: false, helyes_valasz: '?', adott_valasz: '–', kihagyva: true });
+      }
+
+      aktualis++;
+      if (aktualis >= kerdesek.length) {
+        mutatEredmeny();
+      } else {
+        mutatKerdes();
+      }
+    }
+
+    function mutatEredmeny() {
+      document.getElementById('kviz-screen').style.display = 'none';
+      document.getElementById('eredmeny-screen').style.display = 'block';
+
+      const total = kerdesek.length;
+      const szazalek = Math.round((pontszam / total) * 100);
+
+      document.getElementById('er-szazalek').textContent = `${szazalek}%`;
+
+      let uzenet;
+      if (szazalek >= 90) uzenet = `Kiváló! ${pontszam}/${total} helyes — remek teljesítmény! 🎉`;
+      else if (szazalek >= 70) uzenet = `Jó munka! ${pontszam}/${total} helyes válasz. 👍`;
+      else if (szazalek >= 50) uzenet = `${pontszam}/${total} helyes. Van még hova fejlődni! 💪`;
+      else uzenet = `${pontszam}/${total} helyes. Próbáld újra! 📖`;
+
+      document.getElementById('er-szoveg').textContent = uzenet;
+
+      const lista = document.getElementById('er-lista');
+      lista.innerHTML = '';
+      eredmenyek.forEach((e, i) => {
+        const sor = document.createElement('div');
+        sor.className = 'eredmeny-sor';
+        sor.innerHTML = `
+          <div class="sor-ikon ${e.helyes ? 'jo' : 'rossz'}">${e.helyes ? '✓' : '✗'}</div>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px;">${i + 1}. ${e.kerdes}</div>
+            <div style="font-size:0.82rem;color:var(--muted);">
+              ${e.kihagyva ? 'Kihagyva' : `Te: ${e.adott_valasz.toUpperCase()} — Helyes: ${e.helyes_valasz.toUpperCase()}`}
+            </div>
+          </div>
+        `;
+        lista.appendChild(sor);
+      });
+    }
+
+    function ujrakezdés() {
+      betolt();
+    }
+
+    // Indítás
+    betolt();
+  </script>
+</body>
+</html>

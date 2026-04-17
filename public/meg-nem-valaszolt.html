@@ -56,6 +56,12 @@
     </div>
   </div>
 
+<div style="position:fixed; bottom:20px; right:20px;">
+  <button class="btn" style="background:#e03131; color:white;" onclick="resetMegvalaszolva()">
+    🔴 Reset (minden kérdés újra)
+  </button>
+</div>
+
   <script>
     let kerdesek = [];
     let aktualis = 0;
@@ -277,6 +283,28 @@
         `;
         lista.appendChild(sor);
       });
+    }
+
+    async function resetMegvalaszolva() {
+    if (!confirm('Biztosan visszaállítod az összes kérdést?')) return;
+
+    try {
+        const resp = await fetch('/api/reset-megvalaszolva', {
+        method: 'POST'
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) throw new Error(data.hiba || 'Hiba történt');
+
+        alert('Sikeresen visszaállítva!');
+
+        // újratöltjük a kérdéseket
+        betolt();
+
+    } catch (e) {
+        alert('Hiba: ' + e.message);
+    }
     }
 
     function ujrakezdes() {

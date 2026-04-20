@@ -115,7 +115,7 @@ app.post('/api/ellenor-megvalaszolas', async (req, res) => {
   }
 });
 
-// opcionális reset endpoint teszteléshez
+//reset endpoint
 app.post('/api/reset-megvalaszolva', async (req, res) => {
   try {
     await pool.query('UPDATE kerdesek SET megvalaszolva = 0');
@@ -126,6 +126,73 @@ app.post('/api/reset-megvalaszolva', async (req, res) => {
   }
 });
 
+//teszteredmény mentése
+app.post('/api/teszt-mentes', async (req, res) => {
+  const { eredmeny } = req.body;
+
+  if (eredmeny == null) {
+    return res.status(400).json({ hiba: 'Hiányzó eredmény.' });
+  }
+
+  try {
+    await pool.query(
+      'INSERT INTO teszt_eredmenyek (eredmeny) VALUES ($1)',
+      [eredmeny]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: err.message });
+  }
+});
+
+// API: összes teszteredmény listázása
+app.get('/api/teszt-eredmenyek', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, datum, eredmeny
+      FROM teszt_eredmenyek
+      ORDER BY datum DESC
+    `);
+
+    res.json({ eredmenyek: result.rows });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+// API: statisztikai összesítés
+app.get('/api/teszt-statisztika', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) AS tesztek_szama,
+        COALESCE(ROUND(AVG(eredmeny)), 0) AS atlag_eredmeny,
+        COALESCE(MAX(eredmeny), 0) AS legjobb_eredmeny,
+        COALESCE(
+          (
+            SELECT eredmeny
+            FROM teszt_eredmenyek
+            ORDER BY datum DESC
+            LIMIT 1
+          ), 0
+        ) AS utolso_eredmeny
+      FROM teszt_eredmenyek
+    `);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+
+
+
+
 // Minden más útvonal az index.html-t adja vissza
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -134,3 +201,4 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Szerver fut: http://localhost:${PORT}`);
 });
+

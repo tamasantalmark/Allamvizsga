@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teszt statisztikák</title>
+  <link rel="stylesheet" href="/css.css" />
+  <style>
+    .stats-wrap {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 16px 40px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #222;
+    }
+
+    .table-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      overflow-x: auto;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+
+    .stats-table th {
+      background: #f7f8fc;
+      font-weight: 600;
+    }
+
+    .eredmeny-badge {
+      display: inline-block;
+      min-width: 60px;
+      text-align: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      background: #eef1ff;
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .empty-box {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      color: #666;
+    }
+
+    .topbar {
+      max-width: 1100px;
+      margin: 20px auto 0;
+      padding: 0 16px;
+    }
+
+    .topbar a {
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="btn btn-outline" href="/index.html">← Vissza a főmenübe</a>
+  </div>
+
+  <header>
+    <h1>Teszteredmények és statisztikák</h1>
+    <p>Elmentett eredmények listája és összesítése</p>
+  </header>
+
+  <div class="stats-wrap">
+    <div class="page-actions">
+      <button class="btn btn-primary" onclick="betoltStatisztika()">Frissítés</button>
+    </div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      Statisztikák betöltése…
+    </div>
+
+    <div id="hiba" style="display:none;">
+      ⚠️ <span id="hiba-szoveg"></span>
+    </div>
+
+    <div id="tartalom" style="display:none;">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Tesztek száma</div>
+          <div class="stat-value" id="tesztek-szama">0</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Átlag eredmény</div>
+          <div class="stat-value" id="atlag-eredmeny">0%</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Legjobb eredmény</div>
+          <div class="stat-value" id="legjobb-eredmeny">0%</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Legutóbbi eredmény</div>
+          <div class="stat-value" id="utolso-eredmeny">0%</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <h2 style="margin-top:0;">Korábbi tesztek</h2>
+        <div id="lista-wrapper"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function betoltStatisztika() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('hiba').style.display = 'none';
+      document.getElementById('tartalom').style.display = 'none';
+
+      try {
+        const [statResp, listaResp] = await Promise.all([
+          fetch('/api/teszt-statisztika'),
+          fetch('/api/teszt-eredmenyek')
+        ]);
+
+        const statText = await statResp.text();
+        const listaText = await listaResp.text();
+
+        let statData;
+        let listaData;
+
+        try {
+          statData = JSON.parse(statText);
+        } catch {
+          throw new Error('A statisztika API nem JSON választ adott.');
+        }
+
+        try {
+          listaData = JSON.parse(listaText);
+        } catch {
+          throw new Error('Az eredménylista API nem JSON választ adott.');
+        }
+
+        if (!statResp.ok) throw new Error(statData.hiba || 'Hiba a statisztika lekérésénél.');
+        if (!listaResp.ok) throw new Error(listaData.hiba || 'Hiba az eredmények lekérésénél.');
+
+        document.getElementById('tesztek-szama').textContent = Number(statData.tesztek_szama || 0);
+        document.getElementById('atlag-eredmeny').textContent = `${Number(statData.atlag_eredmeny || 0)}%`;
+        document.getElementById('legjobb-eredmeny').textContent = `${Number(statData.legjobb_eredmeny || 0)}%`;
+        document.getElementById('utolso-eredmeny').textContent = `${Number(statData.utolso_eredmeny || 0)}%`;
+
+        const wrapper = document.getElementById('lista-wrapper');
+        const eredmenyek = listaData.eredmenyek || [];
+
+        if (eredmenyek.length === 0) {
+          wrapper.innerHTML = `<div class="empty-box">Még nincs elmentett teszteredmény.</div>`;
+        } else {
+          wrapper.innerHTML = `
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Dátum</th>
+                  <th>Eredmény</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${eredmenyek.map(e => `
+                  <tr>
+                    <td>${e.id}</td>
+                    <td>${formatDatum(e.datum)}</td>
+                    <td><span class="eredmeny-badge">${Number(e.eredmeny)}%</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('tartalom').style.display = 'block';
+      } catch (e) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('hiba').style.display = 'block';
+        document.getElementById('hiba-szoveg').textContent = e.message;
+      }
+    }
+
+    function formatDatum(datum) {
+      const d = new Date(datum);
+      if (isNaN(d)) return datum;
+
+      return d.toLocaleString('hu-HU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    betoltStatisztika();
+  </script>
+</body>
+</html>

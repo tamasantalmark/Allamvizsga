@@ -42,7 +42,7 @@
       <div class="valaszok" id="valaszok"></div>
       <div class="feedback" id="feedback"></div>
       <div class="btn-row">
-        <button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</button>
+        <!--button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</!--button-->
         <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő →</button>
       </div>
     </div>
@@ -111,7 +111,7 @@
       feedback.textContent = '';
 
       //document.getElementById('kihagyom-btn').style.display = 'inline-block';
-      document.getElementById('tovabb-btn').style.display = 'none';
+     // document.getElementById('tovabb-btn').style.display = 'none';
 
       // Válaszok renderelése
       const betuk = ['a', 'b', 'c', 'd', 'e'];
@@ -190,7 +190,7 @@
       }
 
         document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
-        document.getElementById('kihagyom-btn').style.display = 'none';
+        //document.getElementById('kihagyom-btn').style.display = 'none';
         document.getElementById('tovabb-btn').style.display = 'inline-block';
 
         eredmenyek.push({
@@ -254,7 +254,26 @@
         `;
         lista.appendChild(sor);
       });
+      mentesEredmeny();
     }
+
+
+    async function mentesEredmeny() {
+    const total = kerdesek.length;
+    const szazalek = Math.round(pontszam);
+        try {
+            await fetch('/api/teszt-mentes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                eredmeny: szazalek
+            })
+            });
+        } catch (e) {
+            console.error('Mentési hiba:', e);
+        }
+    }
+
 
     function ujrakezdés() {
       betolt();

@@ -52,6 +52,23 @@ app.get('/api/meg-nem-valaszolt-kerdesek', async (req, res) => {
   }
 });
 
+// API: 100 random kérdés
+app.get('/api/100-kerdes', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e
+      FROM kerdesek
+      ORDER BY RANDOM()
+      LIMIT 100
+    `);
+
+    res.json({ kerdesek: result.rows });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
 // API: válasz ellenőrzése + helyes válasz esetén megvalaszolva = 1
 app.post('/api/ellenor-megvalaszolas', async (req, res) => {
   const { id, valasz } = req.body;

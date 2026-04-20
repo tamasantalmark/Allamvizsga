@@ -109,7 +109,7 @@
 
   <div class="stats-wrap">
     <div class="page-actions">
-      <button class="btn btn-primary" onclick="betoltStatisztika()">Frissítés</button>
+      <button class="btn btn-primary" onclick="go('index.html')">Vissza a főoldalra</button>
     </div>
 
     <div id="loading">
@@ -240,6 +240,10 @@
     }
 
     betoltStatisztika();
+
+    function go(url) {
+      window.location.href = url;
+    }
   </script>
 </body>
 </html>

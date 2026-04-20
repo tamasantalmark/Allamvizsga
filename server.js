@@ -115,6 +115,46 @@ app.post('/api/ellenor-megvalaszolas', async (req, res) => {
   }
 });
 
+//API: ellenőr
+app.post('/api/ellenor', async (req, res) => {
+  const { id, valasz } = req.body;
+
+  if (!id || !valasz) {
+    return res.status(400).json({ hiba: 'Hiányzó id vagy válasz.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT helyes_valasz FROM kerdesek WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ hiba: 'Kérdés nem található.' });
+    }
+
+    const map = {
+      igaz: 'a',
+      hamis: 'b'
+    };
+
+    const helyesRaw = String(result.rows[0].helyes_valasz).trim().toLowerCase();
+    const helyes = map[helyesRaw] || helyesRaw;
+    const adott = String(valasz).trim().toLowerCase();
+
+    const jo = helyes === adott;
+
+    res.json({
+      helyes: jo,
+      helyes_valasz: helyes
+    });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+
 //reset endpoint
 app.post('/api/reset-megvalaszolva', async (req, res) => {
   try {

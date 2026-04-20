@@ -59,7 +59,7 @@ app.get('/api/100-kerdes', async (req, res) => {
       SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e
       FROM kerdesek
       ORDER BY RANDOM()
-      LIMIT 100
+      LIMIT 2
     `);
 
     res.json({ kerdesek: result.rows });

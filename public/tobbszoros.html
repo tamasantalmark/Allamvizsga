@@ -43,7 +43,8 @@
       <div class="feedback" id="feedback"></div>
       <div class="btn-row">
         <button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</button>
-        <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő →</button>
+        <button class="btn btn-primary" id="ellenor-btn" onclick="ellenor()">Ellenőrzés</button>
+        <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő</button>
       </div>
     </div>
   </div>
@@ -107,27 +108,89 @@ function toggle(valasz, btn) {
 }
 
 async function ellenor() {
-  const k = kerdesek[aktualis];
+  if (valaszolva) return;
 
-  const resp = await fetch('/api/tobbszoros-ellenor', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      id: k.id,
-      valaszok: valasztottak
-    })
+  if (valasztottak.length === 0) {
+    const feedback = document.getElementById('feedback');
+    feedback.textContent = 'Válassz ki legalább egy választ.';
+    feedback.className = 'feedback show rossz';
+    return;
+  }
+
+  valaszolva = true;
+
+  const k = kerdesek[aktualis];
+  const btns = document.querySelectorAll('.valasz-btn');
+
+  btns.forEach(b => {
+    b.disabled = true;
+    b.style.borderColor = '';
+    b.style.background = '';
   });
 
-  const data = await resp.json();
+  try {
+    const resp = await fetch('/api/ellenor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: k.id,
+        valaszok: valasztottak
+      })
+    });
 
-  if (data.helyes) {
-    pont++;
-    document.getElementById('feedback').innerText = "HELYES";
-  } else {
-    document.getElementById('feedback').innerText =
-      "ROSSZ. Helyes: " + data.helyes_valaszok.join(", ");
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.hiba || 'Hiba történt.');
+    }
+
+    const feedback = document.getElementById('feedback');
+
+    const helyesValaszok = data.helyes_valaszok || [];
+    const valaszHelyes = data.helyes === true;
+
+    btns.forEach(b => {
+      const betu = b.dataset.valasz;
+
+      if (helyesValaszok.includes(betu)) {
+        b.classList.add('helyes');
+      }
+
+      if (valasztottak.includes(betu) && !helyesValaszok.includes(betu)) {
+        b.classList.add('hibas');
+      }
+    });
+
+    if (valaszHelyes) {
+      pontszam++;
+      feedback.textContent = '✓ Helyes válasz!';
+      feedback.className = 'feedback show jo';
+    } else {
+      feedback.textContent = `✗ Sajnos nem. A helyes válasz: ${helyesValaszok.map(v => v.toUpperCase()).join(', ')}`;
+      feedback.className = 'feedback show rossz';
+    }
+
+    document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+    document.getElementById('kihagyom-btn').style.display = 'none';
+    document.getElementById('ellenor-btn').style.display = 'none';
+    document.getElementById('tovabb-btn').style.display = 'inline-block';
+
+    eredmenyek.push({
+      kerdes: k.kerdes,
+      helyes: valaszHelyes,
+      helyes_valasz: helyesValaszok.join(', '),
+      adott_valasz: valasztottak.join(', ')
+    });
+
+  } catch (e) {
+    document.getElementById('feedback').textContent = 'Hálózati hiba: ' + e.message;
+    document.getElementById('feedback').className = 'feedback show rossz';
+    valaszolva = false;
+
+    btns.forEach(b => b.disabled = false);
   }
 }
+
 
 function kovetkezo() {
   aktualis++;

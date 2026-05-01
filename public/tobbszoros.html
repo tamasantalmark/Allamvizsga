@@ -81,9 +81,15 @@ async function betolt() {
 function mutat() {
   valasztottak = [];
 
-  const k = kerdesek[aktualis];
-
-  document.getElementById('kerdes-szoveg').innerText = k.kerdes;
+   const k = kerdesek[aktualis];
+   const total = kerdesek.length;
+   document.getElementById('kerdes-szam').textContent = `Kérdés ${aktualis + 1}`;
+   document.getElementById('kerdes-szoveg').textContent = k.kerdes;
+   document.getElementById('progress-szoveg').textContent = `${aktualis + 1} / ${total}`;
+   document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+   document.getElementById('progress-fill').style.width = `${(aktualis / total) * 100}%`;
+   
+   document.getElementById('kerdes-szoveg').innerText = k.kerdes;
 
   const cont = document.getElementById('valaszok');
   cont.innerHTML = '';

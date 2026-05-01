@@ -219,7 +219,16 @@ function kovetkezo() {
     return;
   }
 
-  document.getElementById('feedback').innerText = '';
+  valaszolva = false;
+
+  const feedback = document.getElementById('feedback');
+  feedback.textContent = '';
+  feedback.className = 'feedback';
+
+  document.getElementById('kihagyom-btn').style.display = 'inline-block';
+  document.getElementById('ellenor-btn').style.display = 'inline-block';
+  document.getElementById('tovabb-btn').style.display = 'none';
+
   mutat();
 }
 

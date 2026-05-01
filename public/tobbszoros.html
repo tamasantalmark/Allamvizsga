@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kvíz</title>
+  <link rel="stylesheet" href="css.css">
+</head>
+<body>
+
+  <header>
+    <h1>Semmelweis Egyetem - ETK - Gyógytornász államvizsga tesztbank kérdések</h1>
+    <p>Egyszerű feleletválasztás és Igaz/Hamis kérdések</p>
+  </header>
+
+  <!-- Töltés -->
+  <div id="loading">
+    <div class="spinner"></div>
+    Kérdések betöltése…
+  </div>
+
+  <!-- Hiba -->
+  <div id="hiba">
+    ⚠️ <span id="hiba-szoveg"></span>
+    <br><br>
+    <button class="btn btn-primary" onclick="betolt()">Újra próbálom</button>
+  </div>
+
+  <!-- Kvíz -->
+  <div id="kviz-screen">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+    <div class="progress-label">
+      <span id="progress-szoveg">1 / ?</span>
+      <span id="pontszam-label">0 helyes</span>
+    </div>
+
+    <div class="card">
+      <div class="question-number" id="kerdes-szam">Kérdés 1</div>
+      <div class="question-text" id="kerdes-szoveg"></div>
+      <div class="valaszok" id="valaszok"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</button>
+        <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eredmény -->
+  <div id="eredmeny-screen">
+    <div class="eredmeny-card">
+      <div class="eredmeny-szazalek" id="er-szazalek">–</div>
+      <div class="eredmeny-szoveg" id="er-szoveg"></div>
+      <div class="eredmeny-lista" id="er-lista"></div>
+      <button class="btn btn-primary" onclick="ujrakezdés()">🔄 Újra kezdem</button>
+    </div>
+  </div>
+<script>
+let kerdesek = [];
+let aktualis = 0;
+let valasztottak = [];
+let pont = 0;
+
+async function betolt() {
+  const resp = await fetch('/api/tobbszoros-kerdesek');
+  const data = await resp.json();
+
+  kerdesek = data.kerdesek;
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('kviz-screen').style.display = 'block';
+
+  mutat();
+}
+
+function mutat() {
+  valasztottak = [];
+
+  const k = kerdesek[aktualis];
+
+  document.getElementById('kerdes').innerText = k.kerdes;
+
+  const cont = document.getElementById('valaszok');
+  cont.innerHTML = '';
+
+  ['a','b','c','d','e'].forEach(b => {
+    if (!k[`valasz_${b}`]) return;
+
+    const btn = document.createElement('button');
+    btn.innerText = b.toUpperCase() + ": " + k[`valasz_${b}`];
+    btn.onclick = () => toggle(b, btn);
+
+    cont.appendChild(btn);
+  });
+}
+
+function toggle(valasz, btn) {
+  if (valasztottak.includes(valasz)) {
+    valasztottak = valasztottak.filter(v => v !== valasz);
+    btn.style.background = '';
+  } else {
+    valasztottak.push(valasz);
+    btn.style.background = 'lightblue';
+  }
+}
+
+async function ellenor() {
+  const k = kerdesek[aktualis];
+
+  const resp = await fetch('/api/tobbszoros-ellenor', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      id: k.id,
+      valaszok: valasztottak
+    })
+  });
+
+  const data = await resp.json();
+
+  if (data.helyes) {
+    pont++;
+    document.getElementById('feedback').innerText = "HELYES";
+  } else {
+    document.getElementById('feedback').innerText =
+      "ROSSZ. Helyes: " + data.helyes_valaszok.join(", ");
+  }
+}
+
+function kovetkezo() {
+  aktualis++;
+
+  if (aktualis >= kerdesek.length) {
+    alert("Vége! Pont: " + pont);
+    return;
+  }
+
+  document.getElementById('feedback').innerText = '';
+  mutat();
+}
+
+betolt();
+</script>
+
+</body>
+</html>

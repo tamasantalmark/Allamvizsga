@@ -24,6 +24,7 @@
     ⚠️ <span id="hiba-szoveg"></span>
     <br><br>
     <button class="btn btn-primary" onclick="betolt()">Újra próbálom</button>
+    <button class="btn btn-primary" onclick="go('index.html')">Más módon tanulok</button>
   </div>
 
   <!-- Kvíz -->
@@ -279,6 +280,10 @@
       betolt();
     }
 
+     function go(url) {
+      window.location.href = url;
+    }
+    
     // Indítás
     betolt();
   </script>

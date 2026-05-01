@@ -154,6 +154,63 @@ app.post('/api/ellenor', async (req, res) => {
   }
 });
 
+// API: többszörös kérdések lekérése
+app.get('/api/tobbszoros-kerdesek', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e
+      FROM kerdesek
+      WHERE tobbszoros = 1
+      ORDER BY RANDOM()
+    `);
+
+    res.json({ kerdesek: result.rows });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+// TÖBBSZÖRÖS VÁLASZ ELLENŐRZÉS
+app.post('/api/tobbszoros-ellenor', async (req, res) => {
+  const { id, valaszok } = req.body;
+
+  if (!id || !Array.isArray(valaszok)) {
+    return res.status(400).json({ hiba: 'Hiányzó adatok.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT helyes_valasz FROM kerdesek WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ hiba: 'Nincs ilyen kérdés.' });
+    }
+
+    const helyesRaw = String(result.rows[0].helyes_valasz)
+      .toLowerCase()
+      .trim();
+
+    // pl: "a,c,d"
+    const helyes = helyesRaw.split(/[;,]/).map(v => v.trim()).sort();
+    const adott = valaszok.map(v => v.toLowerCase()).sort();
+
+    const jo =
+      helyes.length === adott.length &&
+      helyes.every((v, i) => v === adott[i]);
+
+    res.json({
+      helyes: jo,
+      helyes_valaszok: helyes
+    });
+
+  } catch (err) {
+    res.status(500).json({ hiba: err.message });
+  }
+});
+
 
 //reset endpoint
 app.post('/api/reset-megvalaszolva', async (req, res) => {

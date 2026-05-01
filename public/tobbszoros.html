@@ -62,7 +62,9 @@
 let kerdesek = [];
 let aktualis = 0;
 let valasztottak = [];
-let pont = 0;
+let pontszam = 0;
+let valaszolva = false;
+let eredmenyek = [];
 
 async function betolt() {
   const resp = await fetch('/api/tobbszoros-kerdesek');
@@ -129,7 +131,7 @@ async function ellenor() {
   });
 
   try {
-    const resp = await fetch('/api/ellenor', {
+    const resp = await fetch('/api/tobbszoros-ellenor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -196,7 +198,7 @@ function kovetkezo() {
   aktualis++;
 
   if (aktualis >= kerdesek.length) {
-    alert("Vége! Pont: " + pont);
+    alert("Vége! Pont: " + pontszam);
     return;
   }
 

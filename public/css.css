@@ -308,3 +308,13 @@
       .question-text { font-size: 1.05rem; }
       .eredmeny-szazalek { font-size: 3rem; }
     }
+
+    .valasz-btn.kivalasztott {
+  border-color: var(--primary);
+  background: #eef1ff;
+}
+
+.valasz-btn.kivalasztott .betujel {
+  background: var(--primary);
+  color: white;
+}

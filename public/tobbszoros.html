@@ -92,20 +92,28 @@ function mutat() {
     if (!k[`valasz_${b}`]) return;
 
     const btn = document.createElement('button');
-    btn.innerText = b.toUpperCase() + ": " + k[`valasz_${b}`];
+    btn.className = 'valasz-btn';
+    btn.dataset.valasz = b;
+    btn.innerHTML = `
+    <span class="betujel">${b.toUpperCase()}</span>
+    <span>${k[`valasz_${b}`]}</span>
+    `;
     btn.onclick = () => toggle(b, btn);
 
     cont.appendChild(btn);
+
   });
 }
 
 function toggle(valasz, btn) {
+  if (valaszolva) return;
+
   if (valasztottak.includes(valasz)) {
     valasztottak = valasztottak.filter(v => v !== valasz);
-    btn.style.background = '';
+    btn.classList.remove('kivalasztott');
   } else {
     valasztottak.push(valasz);
-    btn.style.background = 'lightblue';
+    btn.classList.add('kivalasztott');
   }
 }
 
@@ -126,8 +134,7 @@ async function ellenor() {
 
   btns.forEach(b => {
     b.disabled = true;
-    b.style.borderColor = '';
-    b.style.background = '';
+    b.classList.remove('helyes', 'hibas');
   });
 
   try {
@@ -155,10 +162,12 @@ async function ellenor() {
       const betu = b.dataset.valasz;
 
       if (helyesValaszok.includes(betu)) {
+        b.classList.remove('kivalasztott');
         b.classList.add('helyes');
       }
 
       if (valasztottak.includes(betu) && !helyesValaszok.includes(betu)) {
+        b.classList.remove('kivalasztott');
         b.classList.add('hibas');
       }
     });
@@ -168,7 +177,9 @@ async function ellenor() {
       feedback.textContent = '✓ Helyes válasz!';
       feedback.className = 'feedback show jo';
     } else {
-      feedback.textContent = `✗ Sajnos nem. A helyes válasz: ${helyesValaszok.map(v => v.toUpperCase()).join(', ')}`;
+        const teValaszod = valasztottak.map(v => v.toUpperCase()).join(', ');
+        const helyes = helyesValaszok.map(v => v.toUpperCase()).join(', ');
+      feedback.textContent =  `✗ Sajnos nem. Te válaszod: ${teValaszod} — Helyes válasz: ${helyes}`;;
       feedback.className = 'feedback show rossz';
     }
 

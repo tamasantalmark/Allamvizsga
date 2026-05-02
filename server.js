@@ -173,6 +173,7 @@ app.get('/api/tobbszoros-kerdesek', async (req, res) => {
   }
 });
 
+// API: többszörös meg nem válaszolt kérdések lekérése
 app.get('/api/tobbszoros-kerdesek-nemvalaszolt', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -229,6 +230,7 @@ app.post('/api/tobbszoros-ellenor', async (req, res) => {
   }
 });
 
+// API: többszörös kérdések ellenőrzése és update
 app.post('/api/tobbszoros-ellenor-megvalaszolas', async (req, res) => {
     const { id, valaszok } = req.body;
 

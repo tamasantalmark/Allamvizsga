@@ -18,6 +18,10 @@ const pool = new Pool({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// DB migráció: teszt_tipusa oszlop hozzáadása ha még nincs
+pool.query(`ALTER TABLE teszt_eredmenyek ADD COLUMN IF NOT EXISTS teszt_tipusa VARCHAR(20) DEFAULT 'egyszerű'`)
+  .catch(err => console.error('Migráció hiba:', err.message));
+
 
 // API: random kerdesek
 app.get('/api/random-kerdesek', async (req, res) => {
@@ -62,6 +66,28 @@ app.get('/api/100-kerdes', async (req, res) => {
       WHERE tobbszoros = 0
       ORDER BY RANDOM()
       LIMIT 100
+    `);
+
+    res.json({ kerdesek: result.rows });
+  } catch (err) {
+    console.error('DB hiba:', err.message);
+    res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });
+  }
+});
+
+// API: 100 vegyes kérdés (40 többszörös + 60 egyszerű, összekeverve)
+app.get('/api/100-vegyes-kerdes', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e, tobbszoros
+      FROM (
+        (SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e, tobbszoros
+         FROM kerdesek WHERE tobbszoros = 1 ORDER BY RANDOM() LIMIT 40)
+        UNION ALL
+        (SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e, tobbszoros
+         FROM kerdesek WHERE tobbszoros = 0 ORDER BY RANDOM() LIMIT 60)
+      ) vegyes
+      ORDER BY RANDOM()
     `);
 
     res.json({ kerdesek: result.rows });
@@ -300,16 +326,18 @@ app.post('/api/reset-megvalaszolva-tobbszoros', async (req, res) => {
 
 //teszteredmény mentése
 app.post('/api/teszt-mentes', async (req, res) => {
-  const { eredmeny } = req.body;
+  const { eredmeny, teszt_tipusa } = req.body;
 
   if (eredmeny == null) {
     return res.status(400).json({ hiba: 'Hiányzó eredmény.' });
   }
 
+  const tipus = teszt_tipusa === 'vegyes' ? 'vegyes' : 'egyszerű';
+
   try {
     await pool.query(
-      'INSERT INTO teszt_eredmenyek (eredmeny) VALUES ($1)',
-      [eredmeny]
+      'INSERT INTO teszt_eredmenyek (eredmeny, teszt_tipusa) VALUES ($1, $2)',
+      [eredmeny, tipus]
     );
 
     res.json({ ok: true });
@@ -323,7 +351,7 @@ app.post('/api/teszt-mentes', async (req, res) => {
 app.get('/api/teszt-eredmenyek', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, datum, eredmeny
+      SELECT id, datum, eredmeny, COALESCE(teszt_tipusa, 'egyszerű') AS teszt_tipusa
       FROM teszt_eredmenyek
       ORDER BY datum DESC
     `);
@@ -338,23 +366,40 @@ app.get('/api/teszt-eredmenyek', async (req, res) => {
 // API: statisztikai összesítés
 app.get('/api/teszt-statisztika', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        COUNT(*) AS tesztek_szama,
-        COALESCE(ROUND(AVG(eredmeny)), 0) AS atlag_eredmeny,
-        COALESCE(MAX(eredmeny), 0) AS legjobb_eredmeny,
-        COALESCE(
-          (
-            SELECT eredmeny
-            FROM teszt_eredmenyek
-            ORDER BY datum DESC
-            LIMIT 1
-          ), 0
-        ) AS utolso_eredmeny
-      FROM teszt_eredmenyek
-    `);
+    const [osszes, egyszeru, vegyes] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*) AS tesztek_szama,
+          COALESCE(ROUND(AVG(eredmeny)), 0) AS atlag_eredmeny,
+          COALESCE(MAX(eredmeny), 0) AS legjobb_eredmeny,
+          COALESCE((SELECT eredmeny FROM teszt_eredmenyek ORDER BY datum DESC LIMIT 1), 0) AS utolso_eredmeny
+        FROM teszt_eredmenyek
+      `),
+      pool.query(`
+        SELECT
+          COUNT(*) AS tesztek_szama,
+          COALESCE(ROUND(AVG(eredmeny)), 0) AS atlag_eredmeny,
+          COALESCE(MAX(eredmeny), 0) AS legjobb_eredmeny,
+          COALESCE((SELECT eredmeny FROM teszt_eredmenyek WHERE COALESCE(teszt_tipusa, 'egyszerű') = 'egyszerű' ORDER BY datum DESC LIMIT 1), 0) AS utolso_eredmeny
+        FROM teszt_eredmenyek
+        WHERE COALESCE(teszt_tipusa, 'egyszerű') = 'egyszerű'
+      `),
+      pool.query(`
+        SELECT
+          COUNT(*) AS tesztek_szama,
+          COALESCE(ROUND(AVG(eredmeny)), 0) AS atlag_eredmeny,
+          COALESCE(MAX(eredmeny), 0) AS legjobb_eredmeny,
+          COALESCE((SELECT eredmeny FROM teszt_eredmenyek WHERE teszt_tipusa = 'vegyes' ORDER BY datum DESC LIMIT 1), 0) AS utolso_eredmeny
+        FROM teszt_eredmenyek
+        WHERE teszt_tipusa = 'vegyes'
+      `)
+    ]);
 
-    res.json(result.rows[0]);
+    res.json({
+      osszes: osszes.rows[0],
+      egyszeru: egyszeru.rows[0],
+      vegyes: vegyes.rows[0]
+    });
   } catch (err) {
     console.error('DB hiba:', err.message);
     res.status(500).json({ hiba: 'Adatbázis hiba: ' + err.message });

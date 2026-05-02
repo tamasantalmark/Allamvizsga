@@ -286,7 +286,7 @@
     }
 
     async function resetMegvalaszolva() {
-    if (!confirm('Biztosan visszaállítod az összes kérdést?')) return;
+    if (!confirm('Biztosan visszaállítod az összes egyszerű kérdést?')) return;
 
     try {
         const resp = await fetch('/api/reset-megvalaszolva', {

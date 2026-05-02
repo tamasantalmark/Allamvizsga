@@ -231,7 +231,7 @@ app.post('/api/tobbszoros-ellenor', async (req, res) => {
 });
 
 // API: többszörös kérdések ellenőrzése és update
-app.post('/api/tobbszoros-ellenor-megvalaszolas', async (req, res) => {
+app.post('/api/tobbszoros-ellenor-megvalaszolva', async (req, res) => {
     const { id, valaszok } = req.body;
 
   if (!id || !Array.isArray(valaszok)) {

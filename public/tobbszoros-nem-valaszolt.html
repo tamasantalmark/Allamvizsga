@@ -150,12 +150,9 @@ async function ellenor() {
 
   try {
     const resp = await fetch('/api/tobbszoros-ellenor-megvalaszolva', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: k.id,
-        valaszok: valasztottak
-      })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: k.id, valaszok: valasztottak })
     });
 
     const data = await resp.json();
@@ -166,7 +163,7 @@ async function ellenor() {
 
     const feedback = document.getElementById('feedback');
 
-    const helyesValaszok = data.helyes_valaszok || [];
+    const helyesValaszok = data.helyes_valasz || [];
     const valaszHelyes = data.helyes === true;
 
     btns.forEach(b => {
@@ -238,7 +235,7 @@ function kovetkezo() {
 }
 
  async function resetMegvalaszolva() {
-    if (!confirm('Biztosan visszaállítod az összes kérdést?')) return;
+    if (!confirm('Biztosan visszaállítod az összes többszörös kérdést?')) return;
 
     try {
         const resp = await fetch('/api/reset-megvalaszolva-tobbszoros', {

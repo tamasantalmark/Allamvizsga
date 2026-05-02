@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kvíz</title>
+  <link rel="stylesheet" href="css.css">
+</head>
+<body>
+
+  <header>
+    <h1>Semmelweis Egyetem - ETK - Gyógytornász államvizsga tesztbank kérdések</h1>
+    <p>Egyszerű feleletválasztás és Igaz/Hamis kérdések</p>
+  </header>
+
+  <!-- Töltés -->
+  <div id="loading">
+    <div class="spinner"></div>
+    Kérdések betöltése…
+  </div>
+
+  <!-- Hiba -->
+  <div id="hiba">
+    ⚠️ <span id="hiba-szoveg"></span>
+    <br><br>
+    <button class="btn btn-primary" onclick="betolt()">Újra próbálom</button>
+  </div>
+
+  <!-- Kvíz -->
+  <div id="kviz-screen">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+    <div class="progress-label">
+      <span id="progress-szoveg">1 / ?</span>
+      <span id="pontszam-label">0 helyes</span>
+    </div>
+
+    <div class="card">
+      <div class="question-number" id="kerdes-szam">Kérdés 1</div>
+      <div class="question-text" id="kerdes-szoveg"></div>
+      <div class="valaszok" id="valaszok"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" id="kihagyom-btn" onclick="kovetkezo()">Kihagyom</button>
+        <button class="btn btn-primary" id="ellenor-btn" onclick="ellenor()">Ellenőrzés</button>
+        <button class="btn btn-primary" id="tovabb-btn" onclick="kovetkezo()" style="display:none">Következő</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Eredmény -->
+  <div id="eredmeny-screen">
+    <div class="eredmeny-card">
+      <div class="eredmeny-szazalek" id="er-szazalek">–</div>
+      <div class="eredmeny-szoveg" id="er-szoveg"></div>
+      <div class="eredmeny-lista" id="er-lista"></div>
+      <button class="btn btn-primary" onclick="ujrakezdés()">🔄 Újra kezdem</button>
+    </div>
+  </div>
+<script>
+let kerdesek = [];
+let aktualis = 0;
+let valasztottak = [];
+let pontszam = 0;
+let valaszolva = false;
+let eredmenyek = [];
+
+async function betolt() {
+  const resp = await fetch('/api/tobbszoros-kerdesek-nemvalaszolt');
+  const data = await resp.json();
+
+  kerdesek = data.kerdesek;
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('kviz-screen').style.display = 'block';
+
+  mutat();
+}
+
+function mutat() {
+  valasztottak = [];
+
+   const k = kerdesek[aktualis];
+   const total = kerdesek.length;
+   document.getElementById('kerdes-szam').textContent = `Kérdés ${aktualis + 1}`;
+   document.getElementById('kerdes-szoveg').textContent = k.kerdes;
+   document.getElementById('progress-szoveg').textContent = `${aktualis + 1} / ${total}`;
+   document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+   document.getElementById('progress-fill').style.width = `${(aktualis / total) * 100}%`;
+   
+   document.getElementById('kerdes-szoveg').innerText = k.kerdes;
+
+  const cont = document.getElementById('valaszok');
+  cont.innerHTML = '';
+
+  ['a','b','c','d','e'].forEach(b => {
+    if (!k[`valasz_${b}`]) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'valasz-btn';
+    btn.dataset.valasz = b;
+    btn.innerHTML = `
+    <span class="betujel">${b.toUpperCase()}</span>
+    <span>${k[`valasz_${b}`]}</span>
+    `;
+    btn.onclick = () => toggle(b, btn);
+
+    cont.appendChild(btn);
+
+  });
+}
+
+function toggle(valasz, btn) {
+  if (valaszolva) return;
+
+  if (valasztottak.includes(valasz)) {
+    valasztottak = valasztottak.filter(v => v !== valasz);
+    btn.classList.remove('kivalasztott');
+  } else {
+    valasztottak.push(valasz);
+    btn.classList.add('kivalasztott');
+  }
+}
+
+async function ellenor() {
+  if (valaszolva) return;
+
+  if (valasztottak.length === 0) {
+    const feedback = document.getElementById('feedback');
+    feedback.textContent = 'Válassz ki legalább egy választ.';
+    feedback.className = 'feedback show rossz';
+    return;
+  }
+
+  valaszolva = true;
+
+  const k = kerdesek[aktualis];
+  const btns = document.querySelectorAll('.valasz-btn');
+
+  btns.forEach(b => {
+    b.disabled = true;
+    b.classList.remove('helyes', 'hibas');
+  });
+
+  try {
+    const resp = await fetch('/api/tobbszoros-ellenor-megvalaszolva', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: k.id,
+        valaszok: valasztottak
+      })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.hiba || 'Hiba történt.');
+    }
+
+    const feedback = document.getElementById('feedback');
+
+    const helyesValaszok = data.helyes_valaszok || [];
+    const valaszHelyes = data.helyes === true;
+
+    btns.forEach(b => {
+      const betu = b.dataset.valasz;
+
+      if (helyesValaszok.includes(betu)) {
+        b.classList.remove('kivalasztott');
+        b.classList.add('helyes');
+      }
+
+      if (valasztottak.includes(betu) && !helyesValaszok.includes(betu)) {
+        b.classList.remove('kivalasztott');
+        b.classList.add('hibas');
+      }
+    });
+
+    if (valaszHelyes) {
+      pontszam++;
+      feedback.textContent = '✓ Helyes válasz!';
+      feedback.className = 'feedback show jo';
+    } else {
+        const teValaszod = valasztottak.map(v => v.toUpperCase()).join(', ');
+        const helyes = helyesValaszok.map(v => v.toUpperCase()).join(', ');
+      feedback.textContent =  `✗ Sajnos nem. Te válaszod: ${teValaszod} — Helyes válasz: ${helyes}`;;
+      feedback.className = 'feedback show rossz';
+    }
+
+    document.getElementById('pontszam-label').textContent = `${pontszam} helyes`;
+    document.getElementById('kihagyom-btn').style.display = 'none';
+    document.getElementById('ellenor-btn').style.display = 'none';
+    document.getElementById('tovabb-btn').style.display = 'inline-block';
+
+    eredmenyek.push({
+      kerdes: k.kerdes,
+      helyes: valaszHelyes,
+      helyes_valasz: helyesValaszok.join(', '),
+      adott_valasz: valasztottak.join(', ')
+    });
+
+  } catch (e) {
+    document.getElementById('feedback').textContent = 'Hálózati hiba: ' + e.message;
+    document.getElementById('feedback').className = 'feedback show rossz';
+    valaszolva = false;
+
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+
+function kovetkezo() {
+  aktualis++;
+
+  if (aktualis >= kerdesek.length) {
+    alert("Vége! Pont: " + pontszam);
+    return;
+  }
+
+  valaszolva = false;
+
+  const feedback = document.getElementById('feedback');
+  feedback.textContent = '';
+  feedback.className = 'feedback';
+
+  document.getElementById('kihagyom-btn').style.display = 'inline-block';
+  document.getElementById('ellenor-btn').style.display = 'inline-block';
+  document.getElementById('tovabb-btn').style.display = 'none';
+
+  mutat();
+}
+
+betolt();
+</script>
+
+</body>
+</html>

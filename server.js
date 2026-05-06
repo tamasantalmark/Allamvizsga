@@ -335,7 +335,7 @@ app.get('/api/tobbszoros-kerdesek-nemvalaszolt', async (req, res) => {
   }
 });
 
-app.get('/api/tobbszoros-kerdesek-nemvalaszolt', async (req, res) => {
+app.get('/api/tobbszoros-kerdesek-nemvalaszolt-uj', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e

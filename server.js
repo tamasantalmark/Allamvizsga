@@ -60,7 +60,7 @@ app.get('/api/meg-nem-valaszolt-kerdesek-uj', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, kerdes, valasz_a, valasz_b, valasz_c, valasz_d, valasz_e
-      FROM kerdesek
+      FROM kerdesek_uj
       WHERE COALESCE(megvalaszolva, 0) = 0 AND tobbszoros = 0
       ORDER BY RANDOM()
     `);

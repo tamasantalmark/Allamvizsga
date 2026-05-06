@@ -193,8 +193,10 @@
 
         btns.forEach(b => {
           if (b.dataset.valasz === helyesValasz) {
+            b.classList.remove('kivalasztott');
             b.classList.add('helyes');
           } else if (b.dataset.valasz === valasztott && !valaszHelyes) {
+            b.classList.remove('kivalasztott');
             b.classList.add('hibas');
           }
         });
